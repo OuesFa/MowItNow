@@ -1,0 +1,1 @@
+"gogpgpĝo".foldLeft(" ")
