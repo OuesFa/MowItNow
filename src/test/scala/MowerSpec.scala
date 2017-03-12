@@ -1,9 +1,5 @@
-/**
- * Created by ubuntu on 11/03/17.
- */
-
 import org.scalatest.FlatSpec
-import Mower.Mower
+import com.mowitnow.Mower.Mower
 
 class MowerSpec extends FlatSpec {
 
