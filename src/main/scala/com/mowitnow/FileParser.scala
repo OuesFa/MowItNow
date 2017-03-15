@@ -1,55 +1,69 @@
 package com.mowitnow
 
+import java.util.logging.Logger
+
 import com.mowitnow.model.{Actions, Boundaries}
-import scala.util.parsing.combinator._
+
 import scala.io.Source
+import scala.util.parsing.combinator._
 
 
-class FileParser extends RegexParsers {
+object FileParser extends RegexParsers {
 
-  val REGEX_LAWN = "^\\s*(\\d+)\\s+(\\d+)\\s*$"
-  val REGEX_MOWER = "^\\s*(\\d+)\\s+(\\d+)\\s+([NESW])\\s*$"
-  val REGEX_NUMBER = "(0|[1-9]\\d*)"
-  val REGEX_INSTRUCTION = "(A|G|D)+"
-  val REGEX_ORIENTATION = "^[NESW]$"
+  val log = Logger.getLogger("FileParser")
 
-    def number: Parser[Int] = REGEX_NUMBER.r ^^ { _.toInt } //new Regex("[a-z]+")
-    def actions: Parser[String] = REGEX_INSTRUCTION.r ^^ { _.toString }
-    def orientation: Parser[Char] = REGEX_ORIENTATION.r ^^ { _.toString.head }
-    def mowerString: Parser[String] = REGEX_MOWER.r ^^ { case mower => mower }
-    def bb: Parser[String] = REGEX_LAWN.r ^^ { _.toString}//case expr => Boundaries(expr.toString.head.toInt, expr.toString.last.toInt) }
-    def boundaries: Parser[Boundaries] = number ~ number ^^ { case northLimit ~ eastLimit => Boundaries(northLimit, eastLimit) }
-    def mower: Parser[Mower.Mower] = number ~ number ~ orientation ^^ { case x ~ y ~ orientation => new Mower.Mower((x,y), orientation) }
-    //def actions: Parser[Actions] = instructions ^^ { case instructions => Actions(instructions) }
-}
+  val DIGIT_REGEX = "(0|[1-9]\\d*)"
+  val INSTRUCTION_REGEX = "(F|L|R)+"
+  val ORIENTATION_REGEX = "^[NESW]$"
 
-object TestSimpleParser extends FileParser {
-  def main(args: Array[String]) = {
-    val iterator = Source.fromFile("file").getLines()
-    var m = new Mower.Mower((0,0), 'N')
-    //val limits = iterator.take(1).toList
-    //val bounds = Boundaries(limits.head.toInt,limits.head.toInt)
-    for (line <- iterator) {
-      parse(bb, line) match {
-        case Success(matched, _) => println(matched)//.northLimit.toString + "  LIMITS " + matched.eastLimit.toString)
-        case Failure(msg, _) => print("")//("FAILURE: " + msg)
-        case Error(msg, _) => println("ERROR: " + msg)
-      }
+  def digit: Parser[Int] = DIGIT_REGEX.r ^^ (_.toInt)
 
-      parse(actions, line) match {
-        case Success(matched, _) => {
-          matched foreach (action => m.move(action))
-          println(m + " " + m.boundaries.toString)
-        }
-        case Failure(msg, _) => print("")//("FAILURE: " + msg)
-        case Error(msg, _) => println("ERROR: " + msg)
-      }
+  def instruction: Parser[String] = INSTRUCTION_REGEX.r ^^ (_.toString)
 
-      parse(mower, line) match {
-        case Success(matched, _) => m = matched//; m.boundaries = bounds
-        case Failure(msg, _) => print("")//("FAILURE: " + msg)
-        case Error(msg, _) => println("ERROR: " + msg)
-      }
+  def orientation: Parser[Char] = ORIENTATION_REGEX.r ^^ (_.toString.head)
+
+  def boundaries: Parser[Boundaries] = digit ~ digit ^^ { case northLimit ~ eastLimit => Boundaries(northLimit, eastLimit) }
+
+  def mower: Parser[Mower] = digit ~ digit ~ orientation ^^ { case x ~ y ~ orientation => new Mower(x, y, orientation) }
+
+  def actions: Parser[Actions] = instruction ^^ (i => Actions(i))
+
+
+  def parse(filePath: String): (Boundaries, Iterator[Actions], Iterator[Mower]) = {
+    val lines = Source.fromFile(filePath).getLines()
+    val parsedBoundaries = parseBoundaries(lines.next())
+
+    val (actionLines, mowerLines) = lines.zipWithIndex.partition(lineWithIndex => lineWithIndex._2 % 2 != 0)
+    val parsedActions = actionLines.map(_._1).flatMap(parseAction)
+    val parsedMowers = mowerLines.map(_._1).flatMap(parseMower)
+
+    (parsedBoundaries, parsedActions, parsedMowers)
+
+  }
+
+  parse("mowers")
+
+  private def parseBoundaries(line: String): Boundaries = {
+    parse(boundaries, line) match {
+      case Success(matched, _) => matched
+      case Failure(msg, _) => throw new IllegalArgumentException(s"Boundaries parsing failure: $msg")
+      case Error(msg, _) => throw new IllegalArgumentException(s"Boundaries parsing error:  $msg")
+    }
+  }
+
+  private def parseMower(line: String): Option[Mower] = {
+    parse(mower, line) match {
+      case Success(matched, _) => Some(matched)
+      case Failure(msg, _) => log.warning(s"Mower parsing failure: $msg"); None
+      case Error(msg, _) => log.warning(s"Mower parsing error:  $msg"); None
+    }
+  }
+
+  private def parseAction(line: String): Option[Actions] = {
+    parse(actions, line) match {
+      case Success(matched, _) => Some(matched)
+      case Failure(msg, _) => log.warning(s"Action parsing failure: $msg"); None
+      case Error(msg, _) => log.warning(s"Action parsing error: $msg"); None
     }
   }
 }
