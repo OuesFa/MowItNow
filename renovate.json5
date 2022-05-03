@@ -1,0 +1,41 @@
+{
+  "extends": [
+    "config:base",
+    //":separateMajorReleases",
+    //":separatePatchReleases",
+  ],
+  "includePaths": [
+    "dbre/**"
+  ],
+  "ignorePresets": [
+    ":prHourlyLimit2"
+  ],
+  "packageRules": [
+    {
+      "groupName": "DBRE packages",
+      "enabled": true,
+      //      "matchManagers": [
+      //        "dockerfile"
+      //      ],
+      "allowPostUpgradeCommandTemplating": true,
+      "postUpgradeTasks": {
+        "commands": [
+          "find . -name Dockerfile -type f -exec sed -i 's/LABEL version=\"{{{currentVersion}}}\"/LABEL version=\"{{{newVersion}}}\"/g' {} \\;"
+        ],
+        "fileFilters": [
+          "dbre/**/Dockerfile"
+        ],
+        "executionMode": "update"
+      },
+      "matchPaths": [
+        "dbre/**"
+      ]
+    },
+    {
+      "matchPaths": [
+        "!dbre/**"
+      ],
+      "enabled": false
+    },
+  ]
+}
