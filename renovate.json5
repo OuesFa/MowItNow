@@ -17,16 +17,6 @@
       //      "matchManagers": [
       //        "dockerfile"
       //      ],
-      "allowPostUpgradeCommandTemplating": true,
-      "postUpgradeTasks": {
-        "commands": [
-          "find . -name Dockerfile -type f -exec sed -i 's/LABEL version=\"{{{currentVersion}}}\"/LABEL version=\"{{{newVersion}}}\"/g' {} \\;"
-        ],
-        "fileFilters": [
-          "dbre/**/Dockerfile"
-        ],
-        "executionMode": "update"
-      },
       "matchPaths": [
         "dbre/**"
       ]
